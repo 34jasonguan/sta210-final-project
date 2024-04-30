@@ -1,5 +1,6 @@
 ---
-title: "STA210 Final Project"
+title: "A Statistical Analysis of Gen 6 Pokémon and Their Competitive Viability"
+subtitle: "STA210 Final Project"
 author: "Jason Guan"
 format: pdf
 ---
@@ -9,17 +10,50 @@ format: pdf
 #| message: false
 library(tidyverse)
 library(tidymodels)
-smogon <- read.csv("data/smogon.csv")
+smogonlim <- read.csv("data/smogon.csv")
+pokemon <- read.csv("data/pokemon.csv")
 ```
 
 ```{r}
+#| echo: false
+names(pokemon) <- c("X.", "Name", "Type.1", "Type.2", "Total", "HP", "Attack", "Defense", "Sp..Atk", "Sp..Def", "Speed", "Generation", "Legendary", "Color", "hasGender", "Pr_Male", "Egg_Group_1", "Egg_Group_2", "Mega", "Height_m", "Weight_kg", "Catch_Rate", "Body_Style")
+
+pokemon <- pokemon |>
+  mutate(Legendary = as.logical(Legendary), Mega = as.logical(Mega))
+
+pokemon <- subset(pokemon, select = -c(Color, hasGender, Pr_Male,
+                                          Egg_Group_1, Egg_Group_2, 
+                                          Height_m, Weight_kg, 
+                                          Catch_Rate, Body_Style))
+
+missing_pokemon <- setdiff(pokemon$Name, smogonlim$Name)
+
+missing_data <- pokemon |>
+  filter(Name %in% missing_pokemon)
+
+new_tier <- "LC"
+missing_data$Tier <- new_tier
+
+merged_data <- bind_rows(smogonlim, missing_data)
+
+smogon <- merged_data |>
+  group_by(Name) |>
+  fill(X., Type.1, Type.2, Total, HP, Attack, Defense, 
+       Sp..Atk, Sp..Def, Speed, Generation, Legendary, Mega, Tier)
+```
+
+```{r}
+#| echo: false
+realNFE = c("Bayleef", "Boldore", "Braixen", "Cascoon", "Charmeleon", "Croconaw", "Dewott", "Dragonair", "Drifloon", "Duosion", "Dusclops", "Eelektrik", "Electabuzz", "Flaaffy", "Floette", "Frogadier", "Gloom", "Gothorita", "Graveler", "Grotle", "Grovyle", "Herdier", "Ivysaur", "Jigglypuff", "Kakuna", "Kirlia", "Klang", "Krokorok", "Lairon", "Lampent", "Lombre", "Loudred", "Luxio", "Magmar", "Marill", "Marshtomp", "Meditite", "Metapod", "Murkrow", "Nidorina", "Nidorino", "Nuzleaf", "Palpitoad", "Pidgeotto", "Pignite", "Poliwhirl", "Pupitar", "Quilava", "Quilladin", "Seadra", "Sealeo", "Servine", "Shelgon", "Silcoon", "Skiploom", "Sliggoo", "Spewpa", "Staravia", "Swadloon", "Swirlix", "Tranquill", "Vanillish", "Vibrava", "Wartortle", "Weepinbell", "Whirlipede", "Yanma", "Zweilous")
+
+smogon$Tier[smogon$Name %in% realNFE] <- "NFE"
 smogon$Tier[smogon$Tier == "BL"] <- "UUBL"
 smogon$Tier[smogon$Tier == "BL2"] <- "RUBL"
 smogon$Tier[smogon$Tier == "BL3"] <- "NUBL"
 smogon$Tier[smogon$Tier == "BL4"] <- "PUBL"
 
-new_order <- c("PU", "PUBL", "NU", "NUBL", "RU", "RUBL", "UU", "UUBL", 
-               "OU", "Ubers", "AG")
+new_order <- c("LC", "NFE", "PU", "PUBL", "NU", "NUBL", "RU", "RUBL", "UU", 
+               "UUBL", "OU", "Uber", "AG")
 smogon$Tier <- factor(smogon$Tier, levels = new_order)
 ```
 
