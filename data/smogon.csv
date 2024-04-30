@@ -178,7 +178,7 @@
 555,"Darmanitan","Fire","",480,105,140,55,30,55,95,5,FALSE,FALSE,"UU"
 479,"Rotom-H","Electric","Fire",520,50,65,107,105,107,86,4,FALSE,FALSE,"UU"
 641,"Tornadus","Flying","",580,79,115,70,125,80,111,5,TRUE,FALSE,"UU"
-49,"Venomoth","Bug","Poison",450,70,65,60,90,75,90,1,FALSE,FALSE,"BL2"
+49,"Venomoth","Bug","Poison",450,70,65,60,90,75,90,1,FALSE,FALSE,"BL"
 146,"Moltres","Fire","Flying",580,90,100,90,125,85,90,1,TRUE,FALSE,"BL2"
 208,"Mega Steelix","Steel","Ground",610,75,125,230,55,95,30,2,FALSE,TRUE,"BL2"
 213,"Shuckle","Bug","Rock",505,20,10,230,10,230,5,2,FALSE,FALSE,"BL2"

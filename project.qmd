@@ -1,0 +1,26 @@
+---
+title: "STA210 Final Project"
+author: "Jason Guan"
+format: pdf
+---
+
+```{r}
+#| echo: false
+#| message: false
+library(tidyverse)
+library(tidymodels)
+smogon <- read.csv("data/smogon.csv")
+```
+
+```{r}
+smogon$Tier[smogon$Tier == "BL"] <- "UUBL"
+smogon$Tier[smogon$Tier == "BL2"] <- "RUBL"
+smogon$Tier[smogon$Tier == "BL3"] <- "NUBL"
+smogon$Tier[smogon$Tier == "BL4"] <- "PUBL"
+
+new_order <- c("PU", "PUBL", "NU", "NUBL", "RU", "RUBL", "UU", "UUBL", 
+               "OU", "Ubers", "AG")
+smogon$Tier <- factor(smogon$Tier, levels = new_order)
+```
+
+
