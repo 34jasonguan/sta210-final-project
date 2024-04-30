@@ -57,4 +57,77 @@ new_order <- c("LC", "NFE", "PU", "PUBL", "NU", "NUBL", "RU", "RUBL", "UU",
 smogon$Tier <- factor(smogon$Tier, levels = new_order)
 ```
 
+```{r}
+smogon$DualType <- ifelse(smogon$Type.2 == "", smogon$Type.1, 
+                               paste(smogon$Type.1, "/", smogon$Type.2))
+```
+
+## Exploratory Data Analysis
+
+```{r}
+#| echo: false
+smogon |> 
+  ggplot(
+    aes(x = Tier, fill = Tier)) +
+  geom_bar() + 
+  theme_bw()
+```
+
+```{r}
+#| echo: false
+proportions <- prop.table(table(smogon$Generation, smogon$Tier), margin = 1)
+proportions_df <- as.data.frame(proportions)
+colnames(proportions_df) <- c("Generation", "Tier", "Proportion")
+
+ggplot(proportions_df, aes(x = Tier, y = Proportion, 
+                           fill = factor(Generation))) +
+  geom_bar(stat = "identity", position = "fill") +
+  labs(title = "Proportion of Pokémon in Each Tier by Generation",
+       x = "Tier", y = "Proportion",
+       fill = "Generation") +
+  theme_bw()
+```
+
+```{r}
+#| echo: false
+smogoncomp <- smogon |>
+  filter(Tier %in% c("AG", "Uber", "OU"))
+
+types <- c(as.character(smogoncomp$Type.1), as.character(smogoncomp$Type.2))
+type_counts <- table(types)
+
+type_counts_df <- as.data.frame(type_counts)
+names(type_counts_df) <- c("Type", "Count")
+type_counts_df <- type_counts_df[type_counts_df$Type != "", ]
+
+ggplot(type_counts_df, aes(x = "", y = Count, fill = Type)) +
+  geom_bar(stat = "identity", color = "black", linewidth = 0.5) +
+  coord_polar("y", start = 0) +  
+  labs(title = "Distribution of Pokémon Types in OU and Above") +
+  theme_void() +
+  guides(fill = guide_legend(ncol = 2))
+```
+
+## Methodology
+
+```{r}
+smogon <- smogon |>
+  mutate(Banned = ifelse(Tier %in% c("Uber", "AG"), 1, 0))
+
+model1 <- glm(Banned ~ HP + Attack + Defense + Sp..Atk + Sp..Def + Speed, 
+              data = smogon, family = "binomial")
+summary(model1)
+```
+
+
+```{r}
+library(MASS)
+model2 <- polr(factor(Tier) ~ HP + Attack + Defense + Sp..Atk + Sp..Def 
+               + Speed, data = smogon)
+summary(model2)
+exp(coef(model2))
+```
+
+
+
 
