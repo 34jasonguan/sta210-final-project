@@ -5,6 +5,14 @@ author: "Jason Guan"
 format: pdf
 ---
 
+## Introduction
+
+[put intro here]
+
+## Data
+
+[talk about data here]
+
 ```{r}
 #| echo: false
 #| message: false
@@ -16,7 +24,11 @@ pokemon <- read.csv("data/pokemon.csv")
 
 ```{r}
 #| echo: false
-names(pokemon) <- c("X.", "Name", "Type.1", "Type.2", "Total", "HP", "Attack", "Defense", "Sp..Atk", "Sp..Def", "Speed", "Generation", "Legendary", "Color", "hasGender", "Pr_Male", "Egg_Group_1", "Egg_Group_2", "Mega", "Height_m", "Weight_kg", "Catch_Rate", "Body_Style")
+names(pokemon) <- c("X.", "Name", "Type.1", "Type.2", "Total", "HP", "Attack", 
+                    "Defense", "Sp..Atk", "Sp..Def", "Speed", "Generation", 
+                    "Legendary", "Color", "hasGender", "Pr_Male", "Egg_Group_1", 
+                    "Egg_Group_2", "Mega", "Height_m", "Weight_kg", 
+                    "Catch_Rate", "Body_Style")
 
 pokemon <- pokemon |>
   mutate(Legendary = as.logical(Legendary), Mega = as.logical(Mega))
@@ -39,12 +51,25 @@ merged_data <- bind_rows(smogonlim, missing_data)
 smogon <- merged_data |>
   group_by(Name) |>
   fill(X., Type.1, Type.2, Total, HP, Attack, Defense, 
-       Sp..Atk, Sp..Def, Speed, Generation, Legendary, Mega, Tier)
+       Sp..Atk, Sp..Def, Speed, Generation, Legendary, Mega, Tier) |>
+  filter(!(Tier == "LC" & Legendary == TRUE))
 ```
 
 ```{r}
 #| echo: false
-realNFE = c("Bayleef", "Boldore", "Braixen", "Cascoon", "Charmeleon", "Croconaw", "Dewott", "Dragonair", "Drifloon", "Duosion", "Dusclops", "Eelektrik", "Electabuzz", "Flaaffy", "Floette", "Frogadier", "Gloom", "Gothorita", "Graveler", "Grotle", "Grovyle", "Herdier", "Ivysaur", "Jigglypuff", "Kakuna", "Kirlia", "Klang", "Krokorok", "Lairon", "Lampent", "Lombre", "Loudred", "Luxio", "Magmar", "Marill", "Marshtomp", "Meditite", "Metapod", "Murkrow", "Nidorina", "Nidorino", "Nuzleaf", "Palpitoad", "Pidgeotto", "Pignite", "Poliwhirl", "Pupitar", "Quilava", "Quilladin", "Seadra", "Sealeo", "Servine", "Shelgon", "Silcoon", "Skiploom", "Sliggoo", "Spewpa", "Staravia", "Swadloon", "Swirlix", "Tranquill", "Vanillish", "Vibrava", "Wartortle", "Weepinbell", "Whirlipede", "Yanma", "Zweilous")
+realNFE = c("Bayleef", "Boldore", "Braixen", "Cascoon", "Charmeleon", 
+            "Croconaw", "Dewott", "Dragonair", "Drifloon", "Duosion", 
+            "Dusclops", "Eelektrik", "Electabuzz", "Flaaffy", "Floette", 
+            "Frogadier", "Gloom", "Gothorita", "Graveler", "Grotle", "Grovyle", 
+            "Herdier", "Ivysaur", "Jigglypuff", "Kakuna", "Kirlia", "Klang", 
+            "Krokorok", "Lairon", "Lampent", "Lombre", "Loudred", "Luxio", 
+            "Magmar", "Marill", "Marshtomp", "Meditite", "Metapod", "Murkrow", 
+            "Nidorina", "Nidorino", "Nuzleaf", "Palpitoad", "Pidgeotto", 
+            "Pignite", "Poliwhirl", "Pupitar", "Quilava", "Quilladin", 
+            "Seadra", "Sealeo", "Servine", "Shelgon", "Silcoon", "Skiploom", 
+            "Sliggoo", "Spewpa", "Staravia", "Swadloon", "Swirlix", "Tranquill", 
+            "Vanillish", "Vibrava", "Wartortle", "Weepinbell", "Whirlipede", 
+            "Yanma", "Zweilous")
 
 smogon$Tier[smogon$Name %in% realNFE] <- "NFE"
 smogon$Tier[smogon$Tier == "BL"] <- "UUBL"
@@ -58,13 +83,14 @@ smogon$Tier <- factor(smogon$Tier, levels = new_order)
 ```
 
 ```{r}
+#| echo: false
 smogon$DualType <- ifelse(smogon$Type.2 == "", smogon$Type.1, 
                                paste(smogon$Type.1, "/", smogon$Type.2))
 ```
 
 ## Exploratory Data Analysis
 
-```{r}
+```{r fig.height=4.5}
 #| echo: false
 smogon |> 
   ggplot(
@@ -75,16 +101,10 @@ smogon |>
 
 ```{r}
 #| echo: false
-proportions <- prop.table(table(smogon$Generation, smogon$Tier), margin = 1)
-proportions_df <- as.data.frame(proportions)
-colnames(proportions_df) <- c("Generation", "Tier", "Proportion")
-
-ggplot(proportions_df, aes(x = Tier, y = Proportion, 
-                           fill = factor(Generation))) +
-  geom_bar(stat = "identity", position = "fill") +
-  labs(title = "Proportion of Pokémon in Each Tier by Generation",
-       x = "Tier", y = "Proportion",
-       fill = "Generation") +
+smogon |> 
+  ggplot(
+    aes(y = Tier, x = Total)) +
+  geom_boxplot() + 
   theme_bw()
 ```
 
@@ -108,24 +128,102 @@ ggplot(type_counts_df, aes(x = "", y = Count, fill = Type)) +
   guides(fill = guide_legend(ncol = 2))
 ```
 
+```{r}
+#| echo: false
+proportions <- prop.table(table(smogon$Generation, smogon$Tier), margin = 1)
+proportions_df <- as.data.frame(proportions)
+colnames(proportions_df) <- c("Generation", "Tier", "Proportion")
+
+ggplot(proportions_df, aes(x = Tier, y = Proportion, 
+                           fill = factor(Generation))) +
+  geom_bar(stat = "identity", position = "fill") +
+  labs(title = "Proportion of Pokémon in Each Tier by Generation",
+       x = "Tier", y = "Proportion",
+       fill = "Generation") +
+  theme_bw()
+```
+
+```{r}
+#| echo: false
+proportions <- prop.table(table(smogon$Legendary, smogon$Tier), margin = 1)
+proportions_df <- as.data.frame(proportions)
+colnames(proportions_df) <- c("Legendary", "Tier", "Proportion")
+
+ggplot(proportions_df, aes(x = Tier, y = Proportion, 
+                           fill = factor(Legendary))) +
+  geom_bar(stat = "identity", position = "fill") +
+  labs(title = "Proportion of Legendary Pokémon in Each Tier",
+       x = "Tier", y = "Proportion",
+       fill = "Legendary") +
+  theme_bw()
+```
+
 ## Methodology
 
 ```{r}
-smogon <- smogon |>
-  mutate(Banned = ifelse(Tier %in% c("Uber", "AG"), 1, 0))
+#| message: false
+#| echo: false
+library(MASS)
+all_types <- c("Normal", "Fire", "Water", "Electric", "Grass", "Ice", 
+               "Fighting", "Poison", "Ground", "Flying", "Psychic", "Bug", 
+               "Rock", "Ghost", "Dragon", "Dark", "Steel", "Fairy")
 
-model1 <- glm(Banned ~ HP + Attack + Defense + Sp..Atk + Sp..Def + Speed, 
-              data = smogon, family = "binomial")
+for (type in all_types) {
+  smogon <- smogon |> 
+    mutate(!!paste0(type) := if_else(Type.1 == type | Type.2 == type, 1, 0))
+}
+```
+
+```{r}
+#| message: false
+#| echo: false
+model1 <- polr(Tier ~ HP + Attack + Defense + Sp..Atk + Sp..Def + Speed + 
+                 Normal + Fire + Water + Electric + Grass + Ice + Fighting + 
+                 Poison + Ground + Flying + Psychic + Bug + Rock + Ghost + 
+                 Dragon + Dark + Steel + Fairy, 
+               data = smogon)
 summary(model1)
 ```
 
+```{r}
+#| echo: false
+exp(coef(model1))
+```
 
 ```{r}
-library(MASS)
-model2 <- polr(factor(Tier) ~ HP + Attack + Defense + Sp..Atk + Sp..Def 
-               + Speed, data = smogon)
+#| echo: false
+smogon <- smogon |>
+  mutate(Banned = ifelse(Tier %in% c("Uber", "AG"), 1, 0))
+
+model2 <- glm(Banned ~ Total + Mega + Legendary, 
+              data = smogon, family = "binomial")
 summary(model2)
-exp(coef(model2))
+```
+
+```{r}
+#| echo: false
+aug2 <- augment(model2)
+aug2$Factor <- as.factor(aug2$Banned)
+aug2 <- aug2 |>
+  mutate(prob = exp(.fitted)/(1 + exp(.fitted)),
+         pred_leg = ifelse(prob > 0.5, "Uber or Above", "OU or Under")) 
+
+aug2 |>
+  roc_curve(
+    truth = Factor,
+    prob, 
+    event_level = "second") |> 
+  autoplot()
+```
+
+```{r}
+#| echo: false
+aug2 |> 
+  roc_auc(
+    truth = Factor,
+    prob, 
+    event_level = "second"
+  )
 ```
 
 
