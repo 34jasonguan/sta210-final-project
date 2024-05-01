@@ -1,7 +1,6 @@
 ---
 title: "A Statistical Analysis of Pokémon Competitive Viability"
-subtitle: "STA210 Final Project"
-author: "Jason Guan"
+author: "STA210 Final Project - Jason Guan"
 format: pdf
 ---
 
@@ -9,7 +8,7 @@ format: pdf
 
 With over 480 million sales worldwide, Pokémon, short for Pocket Monsters, is one of the most successful game series in the world. Spanning 122 installations and roughly 28 years, the Pokémon games generally revolve around catching, training, and battling fictional creatures called "Pokémon" in a quest to become the Pokémon Champion, creating an entertaining gameplay experience for children and adults alike. Despite its simple premise and cartoon aesthetics, Pokémon is home to a rich competitive scene which has continued to grow and evolve since the establishment of the official Pokémon tournament circuit (Video Game Championships, or VGC) in 2009. 
 
-At the heart of this community is Smogon, an online hub which has been hosting competitions, forums, and strategy guides since the early 2000s. Above all, Smogon's greatest contribution to the competitive scene comes in the form of its widely respected tiering system, forming the basis on which most competitive online play is based. These tiers, ranging from OU (OverUsed) to PU (Perfectly Useless) are based on Pokémon usage rates and dictate which Pokémon are allowed in different game modes, with more powerful Pokémon residing in the higher tiers and lesser used Pokémon inhabiting the lower tiers. At the top lies AG (anything goes) and Ubers, including Pokémon like Arceus and Rayquaza which are typically banned from online play. On the other hand, LC (Little Cup) and NFE (Not Fully Evolved) consist of unevolved, statistically weak pokemon which are not typically used in normal online play. 
+At the heart of this community is Smogon, an online hub which has been hosting competitions, forums, and strategy guides since the early 2000s. Above all, Smogon's greatest contribution to the competitive scene comes in the form of its widely respected tiering system, forming the basis on which most competitive online play is based. These tiers are based on Pokémon usage rates and dictate which Pokémon are allowed in different game modes, with more powerful Pokémon in the higher tiers and lesser used Pokémon inhabiting the lower tiers. At the top lies AG (anything goes) and Ubers, which include Pokémon like Arceus and Rayquaza that are typically banned from online play. Below this lies OU (OverUsed), UU (UnderUsed), RU (Rarely Used), NU (Never Used), PU (Perfectly Useless), and their respective Banlists, which contain Pokémon banned in certain tiers but allowed in higher tiers. At the bottom we see LC (Little Cup) and NFE (Not Fully Evolved), which consist of unevolved, statistically weak pokemon that are not typically used in normal online play.  
 
 This study seeks to analyze how factors such as stats, typing, and Mega/Legendary status impact a Pokémon's competitive rank, as well as the factors which may cause a Pokémon to be banned (AG/Uber tier) from OU competitive play. In doing so, we will hopefully be able to recognize trends in Pokémon power-scaling and identify weaknesses in game balancing which could potentially be addressed in future generations. 
 
@@ -92,15 +91,18 @@ smogon$DualType <- ifelse(smogon$Type.2 == "", smogon$Type.1,
 
 ## Our Data
 
-Due to a lack of available modern data, the two datasets used in this report come from Generation 6 of the Pokémon games, which includes the X/Y and Omega Ruby/Alpha Sapphire games. The 'smogon' dataset features 499 observations and 21 columns which include all Pokémon in and above the PU (Perfectly Useless) tier. To include the Pokémon that were missing from this dataset (those below the PU tier), a subset of missing Pokémon was taken from the 'pokemon' dataset. This data was cleaned by changing all variable names and removing unnecessary variables, then merged with the original dataset to create the updated 'smogon' data frame used throughout this project. The data was then further cleaned by giving the NFE and LC Pokémon their respective tiers and releveling the 'Tier' variable to reflect the actual ordering. **[write more about data cleaning]**
+Due to a lack of available recent data, the two datasets used in this report come from Generation 6 of the Pokémon games, which includes the X/Y and Omega Ruby/Alpha Sapphire games. The 'smogon' dataset features 499 observations and 21 columns which include all Pokémon in and above the PU (Perfectly Useless) tier. To include the Pokémon that were missing from this dataset (those below the PU tier), a subset of missing Pokémon was taken from the 'pokemon' dataset, which features every Pokémon up to Generation 6 but does not store their competitive tiers. This new data was cleaned by changing all variable names to match those of the 'smogon' dataset and removing unnecessary variables such as catch rate and egg groups. It was then merged with the existing data to create the updated 'smogon' data frame used throughout this project. This final data frame was then further cleaned by giving the newly imported Pokémon their respective tiers (LC or NFE) and releveling the 'Tier' variable to reflect the actual ordering.Important variables in this data frame include: 
 
-Important variables in this data frame include: 
 - **HP, Attack, Sp. Atk, Defense, Sp. Def, and Speed**: 6 continuous variables representing a Pokémon's 6 in-game stats
 - **Type.1, Type.2**: categorical variables which reflect the type(s) a Pokémon has (e.g. fire, water, grass, etc.)
 - **Legendary/Mega**: boolean variables representing whether or not a Pokémon is Legendary (one of a kind in-game) or a Mega form
-- **Tier** categorical variable storing the competitive tier (LC to AG) a Pokémon was placed in by Smogon
+- **Tier**: a categorical variable storing the competitive tier (LC to AG) a Pokémon was placed in by Smogon; 
+
+These tiers are ordered from lowest to highest as follows: LC, NFE, PU, PUBL, NU, NUBL, RU, RUBL, UU, UUBL, OU, Uber, AG
 
 ## Exploratory Data Analysis
+
+Given that the goal of this project is to analyze the factors that impact a Pokémon's competitive rank, our exploratory data analysis will focus primarily on examining the distribution of various attributes among Pokémon across different tiers, such as stat totals, typings, and legendary or mega status. To start, the boxplot on the following page illustrates the distribution of Pokémon base stat totals across different competitive tiers. We can see in this plot that, with the exception of the NUBL tier, which only contains one Pokémon, the median base stat totals (BSTs) seem to **increase** as we move up the tiers, meaning that Pokémon in higher competitive tiers tend to have higher base stat totals. In the lower tiers, there are three outliers: Articuno (PU), Slaking (PU), and Regirock (NU). These Pokémon have high base stat totals, though all carry some competitive hindrance which keeps them in low competitive tiers. Regirock and Articuno boast weak/vulnerable typings, while Slaking's immense 670 BST is hindered severely by the "Truant" ability, which renders it useless every second turn. 
 
 ```{r}
 #| echo: false
@@ -108,10 +110,18 @@ smogon |>
   ggplot(
     aes(y = Tier, x = Total)) +
   geom_boxplot() + 
-  theme_bw()
+  theme(plot.margin = margin(2, 2, 2, 2)) +
+  theme_bw() +
+  labs(
+    title = "Pokemon Base Stat Totals by Smogon Tier", 
+    subtitle = "Median BSTs Increase Across Tiers", 
+    x = "Base Stat Total"
+  )
 ```
 
-```{r}
+The figure below illustrates the distribution of typings across the OU, Uber, and AG tiers, the tiers where Pokémon are typically considered competitively viable. From this, we can see that Psychic, Flying, Dragon, and Steel type Pokémon are the most common in these tiers. However, note that Fairy, generally considered as one of the best typings in the game, was introduced in this generation, meaning there were significantly less Fairy Pokémon in the dataset compared to other typings. 
+
+```{r, fig.height=3}
 #| echo: false
 smogoncomp <- smogon |>
   filter(Tier %in% c("AG", "Uber", "OU"))
@@ -131,38 +141,47 @@ ggplot(type_counts_df, aes(x = "", y = Count, fill = Type)) +
   guides(fill = guide_legend(ncol = 2))
 ```
 
-```{r}
+\newpage
+
+The next two visualizations show the proportion of Pokémon in each tier that are legendary or mega-forms. Legendary Pokémon are characterized by their rarity, high BSTs, and prominent roles in the stories of each Pokémon game, while mega evolutions are new Pokémon forms introduced in Generation 6 that give existing Pokémon a new "mega" evolution, often with very high BSTs and new abilities. We see in both plots that, as we move up to more competitive tiers, the proportion of Pokémon in each tier that are legendary or mega tends to increase. We can also notice that proportion for both visualizations peaks in the AG tier. This is because it only contains one Pokémon, Mega Rayquaza, which is both legendary and a mega. 
+
+```{r, fig.height=3}
 #| echo: false
 proportions <- prop.table(table(smogon$Legendary, smogon$Tier), margin = 1)
 proportions_df <- as.data.frame(proportions)
 colnames(proportions_df) <- c("Legendary", "Tier", "Proportion")
 
-ggplot(proportions_df, aes(x = Tier, y = Proportion, 
+ggplot(proportions_df, aes(y = Tier, x = Proportion, 
                            fill = factor(Legendary))) +
   geom_bar(stat = "identity", position = "fill") +
   labs(title = "Proportion of Legendary Pokémon in Each Tier",
-       x = "Tier", y = "Proportion",
+       y = "Tier", x = "Proportion",
        fill = "Legendary") +
   theme_bw()
 ```
 
-```{r}
+```{r, fig.height=3}
 #| echo: false
 proportions <- prop.table(table(smogon$Mega, smogon$Tier), margin = 1)
 proportions_df <- as.data.frame(proportions)
 colnames(proportions_df) <- c("Mega", "Tier", "Proportion")
 
-ggplot(proportions_df, aes(x = Tier, y = Proportion, 
+ggplot(proportions_df, aes(y = Tier, x = Proportion, 
                            fill = factor(Mega))) +
   geom_bar(stat = "identity", position = "fill") +
   labs(title = "Proportion of Mega Pokémon in Each Tier",
-       x = "Tier", y = "Proportion",
+       y = "Tier", x = "Proportion",
        fill = "Mega") +
   theme_bw()
 ```
 
+\newpage
 
 ## Methodology
+
+[insert methodology]
+
+These variables were chosed after it was discovered through exploratory data analysis that they may...
 
 ```{r}
 #| message: false
@@ -233,6 +252,6 @@ aug2 |>
   )
 ```
 
-
+## Results
 
 
