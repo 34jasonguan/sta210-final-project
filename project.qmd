@@ -1,5 +1,5 @@
 ---
-title: "A Statistical Analysis of Gen 6 Pokémon and Their Competitive Viability"
+title: "A Statistical Analysis of Pokémon Competitive Viability"
 subtitle: "STA210 Final Project"
 author: "Jason Guan"
 format: pdf
@@ -7,11 +7,13 @@ format: pdf
 
 ## Introduction
 
-[put intro here]
+With over 480 million sales worldwide, Pokémon, short for Pocket Monsters, is one of the most successful game series in the world. Spanning 122 installations and roughly 28 years, the Pokémon games generally revolve around catching, training, and battling fictional creatures called "Pokémon" in a quest to become the Pokémon Champion, creating an entertaining gameplay experience for children and adults alike. Despite its simple premise and cartoon aesthetics, Pokémon is home to a rich competitive scene which has continued to grow and evolve since the establishment of the official Pokémon tournament circuit (Video Game Championships, or VGC) in 2009. 
 
-## Data
+At the heart of this community is Smogon, an online hub which has been hosting competitions, forums, and strategy guides since the early 2000s. Above all, Smogon's greatest contribution to the competitive scene comes in the form of its widely respected tiering system, forming the basis on which most competitive online play is based. These tiers, ranging from OU (OverUsed) to PU (Perfectly Useless) are based on Pokémon usage rates and dictate which Pokémon are allowed in different game modes, with more powerful Pokémon residing in the higher tiers and lesser used Pokémon inhabiting the lower tiers. At the top lies AG (anything goes) and Ubers, including Pokémon like Arceus and Rayquaza which are typically banned from online play. On the other hand, LC (Little Cup) and NFE (Not Fully Evolved) consist of unevolved, statistically weak pokemon which are not typically used in normal online play. 
 
-[talk about data here]
+This study seeks to analyze how factors such as stats, typing, and Mega/Legendary status impact a Pokémon's competitive rank, as well as the factors which may cause a Pokémon to be banned (AG/Uber tier) from OU competitive play. In doing so, we will hopefully be able to recognize trends in Pokémon power-scaling and identify weaknesses in game balancing which could potentially be addressed in future generations. 
+
+\newpage
 
 ```{r}
 #| echo: false
@@ -88,16 +90,17 @@ smogon$DualType <- ifelse(smogon$Type.2 == "", smogon$Type.1,
                                paste(smogon$Type.1, "/", smogon$Type.2))
 ```
 
-## Exploratory Data Analysis
+## Our Data
 
-```{r fig.height=4.5}
-#| echo: false
-smogon |> 
-  ggplot(
-    aes(x = Tier, fill = Tier)) +
-  geom_bar() + 
-  theme_bw()
-```
+Due to a lack of available modern data, the two datasets used in this report come from Generation 6 of the Pokémon games, which includes the X/Y and Omega Ruby/Alpha Sapphire games. The 'smogon' dataset features 499 observations and 21 columns which include all Pokémon in and above the PU (Perfectly Useless) tier. To include the Pokémon that were missing from this dataset (those below the PU tier), a subset of missing Pokémon was taken from the 'pokemon' dataset. This data was cleaned by changing all variable names and removing unnecessary variables, then merged with the original dataset to create the updated 'smogon' data frame used throughout this project. The data was then further cleaned by giving the NFE and LC Pokémon their respective tiers and releveling the 'Tier' variable to reflect the actual ordering. **[write more about data cleaning]**
+
+Important variables in this data frame include: 
+- **HP, Attack, Sp. Atk, Defense, Sp. Def, and Speed**: 6 continuous variables representing a Pokémon's 6 in-game stats
+- **Type.1, Type.2**: categorical variables which reflect the type(s) a Pokémon has (e.g. fire, water, grass, etc.)
+- **Legendary/Mega**: boolean variables representing whether or not a Pokémon is Legendary (one of a kind in-game) or a Mega form
+- **Tier** categorical variable storing the competitive tier (LC to AG) a Pokémon was placed in by Smogon
+
+## Exploratory Data Analysis
 
 ```{r}
 #| echo: false
@@ -130,21 +133,6 @@ ggplot(type_counts_df, aes(x = "", y = Count, fill = Type)) +
 
 ```{r}
 #| echo: false
-proportions <- prop.table(table(smogon$Generation, smogon$Tier), margin = 1)
-proportions_df <- as.data.frame(proportions)
-colnames(proportions_df) <- c("Generation", "Tier", "Proportion")
-
-ggplot(proportions_df, aes(x = Tier, y = Proportion, 
-                           fill = factor(Generation))) +
-  geom_bar(stat = "identity", position = "fill") +
-  labs(title = "Proportion of Pokémon in Each Tier by Generation",
-       x = "Tier", y = "Proportion",
-       fill = "Generation") +
-  theme_bw()
-```
-
-```{r}
-#| echo: false
 proportions <- prop.table(table(smogon$Legendary, smogon$Tier), margin = 1)
 proportions_df <- as.data.frame(proportions)
 colnames(proportions_df) <- c("Legendary", "Tier", "Proportion")
@@ -157,6 +145,22 @@ ggplot(proportions_df, aes(x = Tier, y = Proportion,
        fill = "Legendary") +
   theme_bw()
 ```
+
+```{r}
+#| echo: false
+proportions <- prop.table(table(smogon$Mega, smogon$Tier), margin = 1)
+proportions_df <- as.data.frame(proportions)
+colnames(proportions_df) <- c("Mega", "Tier", "Proportion")
+
+ggplot(proportions_df, aes(x = Tier, y = Proportion, 
+                           fill = factor(Mega))) +
+  geom_bar(stat = "identity", position = "fill") +
+  labs(title = "Proportion of Mega Pokémon in Each Tier",
+       x = "Tier", y = "Proportion",
+       fill = "Mega") +
+  theme_bw()
+```
+
 
 ## Methodology
 
@@ -180,7 +184,7 @@ for (type in all_types) {
 model1 <- polr(Tier ~ HP + Attack + Defense + Sp..Atk + Sp..Def + Speed + 
                  Normal + Fire + Water + Electric + Grass + Ice + Fighting + 
                  Poison + Ground + Flying + Psychic + Bug + Rock + Ghost + 
-                 Dragon + Dark + Steel + Fairy, 
+                 Dragon + Dark + Steel + Fairy + Mega + Legendary, 
                data = smogon)
 summary(model1)
 ```
@@ -195,7 +199,10 @@ exp(coef(model1))
 smogon <- smogon |>
   mutate(Banned = ifelse(Tier %in% c("Uber", "AG"), 1, 0))
 
-model2 <- glm(Banned ~ Total + Mega + Legendary, 
+model2 <- glm(Banned ~ Total + Mega + Legendary +
+              Normal + Fire + Water + Electric + Grass + Ice + Fighting + 
+              Poison + Ground + Flying + Psychic + Bug + Rock + Ghost + 
+              Dragon + Dark + Steel + Fairy, 
               data = smogon, family = "binomial")
 summary(model2)
 ```
