@@ -10,7 +10,7 @@ With over 480 million sales worldwide, Pokémon, short for Pocket Monsters, is o
 
 At the heart of this community is Smogon, an online hub which has been hosting competitions, forums, and strategy guides since the early 2000s. Above all, Smogon's greatest contribution to the competitive scene comes in the form of its widely respected tiering system, forming the basis on which most competitive online play is based. These tiers are based on Pokémon usage rates and dictate which Pokémon are allowed in different game modes, with more powerful Pokémon in the higher tiers and lesser used Pokémon inhabiting the lower tiers. At the top lies AG (anything goes) and Ubers, which include Pokémon like Arceus and Rayquaza that are typically banned from online play. Below this lies OU (OverUsed), UU (UnderUsed), RU (Rarely Used), NU (Never Used), PU (Perfectly Useless), and their respective Banlists, which contain Pokémon banned in certain tiers but allowed in higher tiers. At the bottom we see LC (Little Cup) and NFE (Not Fully Evolved), which consist of unevolved, statistically weak pokemon that are not typically used in normal online play.  
 
-This study seeks to analyze how factors such as stats, typing, and Mega/Legendary status impact a Pokémon's competitive rank, as well as the factors which may cause a Pokémon to be banned (AG/Uber tier) from OU competitive play. In doing so, we will hopefully be able to recognize trends in Pokémon power-scaling and identify weaknesses in game balancing which could potentially be addressed in future generations. 
+This study seeks to analyze how factors such as stats, typing, and Mega/Legendary status impact a Pokémon's competitive rank, as well as the factors which may cause a Pokémon to be viable in the Generation 6 competitive scene. In doing so, we will hopefully be able to recognize trends in Pokémon power-scaling and identify weaknesses in game balancing which could potentially be addressed in future generations. 
 
 \newpage
 
@@ -19,6 +19,7 @@ This study seeks to analyze how factors such as stats, typing, and Mega/Legendar
 #| message: false
 library(tidyverse)
 library(tidymodels)
+library(dplyr)
 smogonlim <- read.csv("data/smogon.csv")
 pokemon <- read.csv("data/pokemon.csv")
 ```
@@ -85,8 +86,8 @@ smogon$Tier <- factor(smogon$Tier, levels = new_order)
 
 ```{r}
 #| echo: false
-smogon$DualType <- ifelse(smogon$Type.2 == "", smogon$Type.1, 
-                               paste(smogon$Type.1, "/", smogon$Type.2))
+smogon <- smogon |>
+  mutate(DualTyped = ifelse(Type.2 != "", 1, 0))
 ```
 
 ## Our Data
@@ -102,7 +103,7 @@ These tiers are ordered from lowest to highest as follows: LC, NFE, PU, PUBL, NU
 
 ## Exploratory Data Analysis
 
-Given that the goal of this project is to analyze the factors that impact a Pokémon's competitive rank, our exploratory data analysis will focus primarily on examining the distribution of various attributes among Pokémon across different tiers, such as stat totals, typings, and legendary or mega status. To start, the boxplot on the following page illustrates the distribution of Pokémon base stat totals across different competitive tiers. We can see in this plot that, with the exception of the NUBL tier, which only contains one Pokémon, the median base stat totals (BSTs) seem to **increase** as we move up the tiers, meaning that Pokémon in higher competitive tiers tend to have higher base stat totals. In the lower tiers, there are three outliers: Articuno (PU), Slaking (PU), and Regirock (NU). These Pokémon have high base stat totals, though all carry some competitive hindrance which keeps them in low competitive tiers. Regirock and Articuno boast weak/vulnerable typings, while Slaking's immense 670 BST is hindered severely by the "Truant" ability, which renders it useless every second turn. 
+Given that the goal of this project is to analyze the factors that impact a Pokémon's competitive rank and viability, our exploratory data analysis will focus primarily on examining the distribution of various attributes among Pokémon across different tiers, such as stat totals, typings, and legendary or mega status. To start, the boxplot on the following page illustrates the distribution of Pokémon base stat totals across different competitive tiers. We can see in this plot that, with the exception of the NUBL tier, which only contains one Pokémon, the median base stat totals (BSTs) seem to **increase** as we move up the tiers, meaning that Pokémon in higher competitive tiers tend to have higher base stat totals. In the lower tiers, there are three outliers: Articuno (PU), Slaking (PU), and Regirock (NU). These Pokémon have high base stat totals, though all carry some competitive hindrance which keeps them in low competitive tiers. Regirock and Articuno boast weak/vulnerable typings, while Slaking's immense 670 BST is hindered severely by the "Truant" ability, which renders it useless every second turn. 
 
 ```{r}
 #| echo: false
@@ -143,45 +144,58 @@ ggplot(type_counts_df, aes(x = "", y = Count, fill = Type)) +
 
 \newpage
 
-The next two visualizations show the proportion of Pokémon in each tier that are legendary or mega-forms. Legendary Pokémon are characterized by their rarity, high BSTs, and prominent roles in the stories of each Pokémon game, while mega evolutions are new Pokémon forms introduced in Generation 6 that give existing Pokémon a new "mega" evolution, often with very high BSTs and new abilities. We see in both plots that, as we move up to more competitive tiers, the proportion of Pokémon in each tier that are legendary or mega tends to increase. We can also notice that proportion for both visualizations peaks in the AG tier. This is because it only contains one Pokémon, Mega Rayquaza, which is both legendary and a mega. 
+The next two visualizations show the proportion of Pokémon in each tier that are legendary or mega-forms. Legendary Pokémon are characterized by their rarity, high BSTs, and prominent roles in the stories of each Pokémon game, while mega evolutions are new Pokémon forms introduced in Generation 6 that give existing Pokémon a new "mega" evolution, often with very high BSTs and new abilities. We see in the first plot that as we move up to more competitive tiers, the proportion of legendary Pokémon in each tier seems to increase, though not in a discernibly linear pattern. The proportions of mega Pokémon, on the other hand, do not seem to follow a pattern and are more randomly distributed between tiers. Finally, we can also see that both legendary and mega proportion peak in the AG tier. This is because it only contains one Pokémon, Mega Rayquaza, which is both legendary and a mega. 
 
-```{r, fig.height=3}
+```{r, fig.height=2.75}
 #| echo: false
-proportions <- prop.table(table(smogon$Legendary, smogon$Tier), margin = 1)
-proportions_df <- as.data.frame(proportions)
-colnames(proportions_df) <- c("Legendary", "Tier", "Proportion")
+#| message: false
+#| warning: false
+legendary_counts <- smogon %>%
+  group_by(Tier, Legendary) %>%
+  summarise(Count = n()) %>%
+  mutate(Proportion = Count / sum(Count))
 
-ggplot(proportions_df, aes(y = Tier, x = Proportion, 
-                           fill = factor(Legendary))) +
-  geom_bar(stat = "identity", position = "fill") +
-  labs(title = "Proportion of Legendary Pokémon in Each Tier",
-       y = "Tier", x = "Proportion",
-       fill = "Legendary") +
-  theme_bw()
+ggplot(legendary_counts, aes(x = Tier, y = Proportion, fill = Legendary)) +
+  geom_bar(stat = "identity") +
+  labs(
+    x = "Tier", 
+    y = "Proportion of Pokémon", 
+    title = "Proportion of Legendary Pokémon in Each Tier"
+  ) +
+  scale_fill_manual(values = c("FALSE" = "skyblue", 
+                               "TRUE" = "orange")) +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
 ```
-
-```{r, fig.height=3}
+```{r, fig.height=2.75}
 #| echo: false
-proportions <- prop.table(table(smogon$Mega, smogon$Tier), margin = 1)
-proportions_df <- as.data.frame(proportions)
-colnames(proportions_df) <- c("Mega", "Tier", "Proportion")
+#| message: false
+#| warning: false
+mega_counts <- smogon %>%
+  group_by(Tier, Mega) %>%
+  summarise(Count = n()) %>%
+  mutate(Proportion = Count / sum(Count))
 
-ggplot(proportions_df, aes(y = Tier, x = Proportion, 
-                           fill = factor(Mega))) +
-  geom_bar(stat = "identity", position = "fill") +
-  labs(title = "Proportion of Mega Pokémon in Each Tier",
-       y = "Tier", x = "Proportion",
-       fill = "Mega") +
-  theme_bw()
+ggplot(mega_counts, aes(x = Tier, y = Proportion, fill = Mega)) +
+  geom_bar(stat = "identity") +
+  labs(
+    x = "Tier", 
+    y = "Proportion of Pokémon", 
+    title = "Proportion of Mega Pokémon in Each Tier"
+  ) +
+  scale_fill_manual(values = c("FALSE" = "skyblue", 
+                               "TRUE" = "orange")) +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
 ```
 
 \newpage
 
-## Methodology
+## Methodology & Results
 
-[insert methodology]
+As previously mentioned, Smogon's tiers follow an ordered progression from weaker, less used Pokémon to more powerful, widely used Pokémon. This means that our corresponding 'Tier' variable is both categorical and ordered, making it a suitable response variable for an ordinal regression model. Therefore, an ordinal model was used to analyze possible factors influencing the placement of a Pokémon within Smogon's tiers.  
 
-These variables were chosed after it was discovered through exploratory data analysis that they may...
+The predictors used in fitting this model were chosen through exploratory data analysis. They include the six battle statistics (HP, Attack, Special Attack, Defense, Special Defense, and Speed) which act as continuous predictors, all 18 Pokémon types (Fire, Water, Grass, etc.) which act as binary variables storing '1' if a Pokémon is a certain type, as well as Legendary and Mega, two boolean variables which represent whether a Pokémon is legendary or a mega form. Below, we can see the exponentiated coefficients (odds ratios) of each predictor, while the full model output is shown on the next page. 
 
 ```{r}
 #| message: false
@@ -200,39 +214,63 @@ for (type in all_types) {
 ```{r}
 #| message: false
 #| echo: false
+library(kableExtra)
 model1 <- polr(Tier ~ HP + Attack + Defense + Sp..Atk + Sp..Def + Speed + 
                  Normal + Fire + Water + Electric + Grass + Ice + Fighting + 
                  Poison + Ground + Flying + Psychic + Bug + Rock + Ghost + 
                  Dragon + Dark + Steel + Fairy + Mega + Legendary, 
                data = smogon)
-summary(model1)
-```
-
-```{r}
-#| echo: false
 exp(coef(model1))
 ```
 
+Firstly, we can see from this table that Speed boasts the highest odds ratio of the six battle statistics, followed by HP and Special Attack. This means that when we increment the speed of a Pokémon by 1 point, the odds that it is in the next highest Smogon tier are predicted to increase by **a factor of** 1.0478742 when holding all other variables constant. This makes sense since Speed is the stat which determines which Pokémon moves first, giving faster Pokémon a massive advantage by allowing them to potentially knock out opposing Pokémon before they can even move. This makes fast, fragile Pokémon such as Weavile and Gengar very effective. 
+
+Next, we see that the Fairy type has by far the highest odds ratio of any type, with an odds ratio of 9.2316649. This means that, holding all other variables constant, if a Pokémon is Fairy type, the odds that it is in the next highest Smogon Tier are predicted to be 9.2316649 **times** greater than if it were not a Fairy type. Fighting, Bug, Dark, and Steel boast the next highest odds ratios, with values ranging from 5.3341063 to 4.1563215. This also makes sense as Fairy types have strong offensive and defensive coverage on top of being very strong against Dragon types, which were formerly the strongest in the competitive scene. 
+
+\newpage
+
+```{r}
+#| message: false
+#| echo: false
+kable(tidy(model1))
+```
+
+\newpage
+
+Another goal of this study is to determine the factors that make a Pokémon competitively viable. To do this, we can characterize "viability" as the state of being in any of the OU, Uber, or AG tiers since these Pokémon are either the most used in online play (OU) or deemed too powerful for OU competitive play (Uber/AG). We can model this using a logistical regression, where our response variable, 'Viable', is a new binary variable created that stores '1' if a Pokémon is in any of the aforementioned tiers. The predictors used to fit this model include base stat total, a continuous predictor representing the sum of the 6 battle statistics, legendary and mega status, which are both binary predictors, and the previously defined 18 binary "type" variables which each represent whether or not a Pokémon has a specific type. The complete model output can be found below: 
+
 ```{r}
 #| echo: false
+#| warning: false
 smogon <- smogon |>
-  mutate(Banned = ifelse(Tier %in% c("Uber", "AG"), 1, 0))
+  mutate(Viable = ifelse(Tier %in% c("Uber", "AG", "OU"), 1, 0))
 
-model2 <- glm(Banned ~ Total + Mega + Legendary +
+model2 <- glm(Viable ~ Total + Mega + Legendary +
               Normal + Fire + Water + Electric + Grass + Ice + Fighting + 
               Poison + Ground + Flying + Psychic + Bug + Rock + Ghost + 
               Dragon + Dark + Steel + Fairy, 
               data = smogon, family = "binomial")
-summary(model2)
+kable(tidy(model2))
 ```
+
+\newpage
+
+To determine which, if any, of these predictors are statistically significant, we can perform hypothesis tests using a significance level of 0.05. In doing so, we find that five predictors have p-values below this significance level: Total (which represents the base stat total), Flying, Dark, Steel, and Fairy, which carry associated p-values of 4.55e-09, 0.04786, 0.04615, 0.00138, and 0.04843 respectively. This means that for each of these variables, we can reject the respective null hypothesis (which states that there is no relationship between the predictor and the outcome variable) and conclude that there is sufficient evidence to suggest a relationship between each of these variables and the outcome variable. 
+
+We can interpret these results as follows. Total has an associated coefficient of 0.020250, meaning that when we increment a Pokémon's base stat total by 1 point while holding all other variables constant, the odds that a Pokémon is viable are predicted to increase by **a factor of** e^0.020250 = 1.02045642225. This makes sense given the earlier visualization which shows a tendency for Pokémons' median BST to increase across tiers. 
+
+Of the four type variables that are considered statistically significant, Steel carries the highest coefficient of 1.766446, followed by Fairy (1.419742), Dark (1.211190), and Flying (0.964580). This means that, holding all other variables constant, the odds that a Steel-Type Pokémon is viable are predicted to be e^1.766446 = 5.85002538178 **times** greater than if that Pokémon were not Steel-Type. This makes sense given that Steel is resistant to and strong against the very strong Fairy type while also being defensively resistant against many other powerful offensive types such as Ice, Flying, Psychic, and Dragon. 
+
+Since this is a binary classification model, we can evaluate this model's performance by analyzing the ROC curve, which can be seen below: 
 
 ```{r}
 #| echo: false
 aug2 <- augment(model2)
-aug2$Factor <- as.factor(aug2$Banned)
+aug2$Factor <- as.factor(aug2$Viable)
 aug2 <- aug2 |>
   mutate(prob = exp(.fitted)/(1 + exp(.fitted)),
-         pred_leg = ifelse(prob > 0.5, "Uber or Above", "OU or Under")) 
+         pred_via = ifelse(prob > 0.5, "Viable (OU or Above)", 
+                           "Not Viable (Under OU)")) 
 
 aug2 |>
   roc_curve(
@@ -251,7 +289,14 @@ aug2 |>
     event_level = "second"
   )
 ```
+We can see from the data above that the AUC (Area Under Curve) is 0.9399485. Since this value is quite close to 1, this means that the model has strong discriminatory power and is able to correctly identify Viable and Non-Viable Pokémon most of the time. 
 
-## Results
+```{r}
+#| echo: false
+table(aug2$pred_via, aug2$Viable)
+```
+The confusion matrix above shows us all of the true/false positives and negatives. From this, we find that we have a sensitivity of 0.587628865979, a specificity of 0.97, a positive predicted value of 0.730769230769, and a negative predicted value of 0.944367176634. Overall, this means that the model is better at making negative predictions than positive predictions, with a higher specificity and NPV and a lower sensitivity and PPV. 
 
+## Conclusion
 
+[insert conclusion]
